@@ -99,6 +99,13 @@ nav .links b{color:#fff}
 .t10 .box span{background:#000a;padding:4px 6px;border-radius:3px}
 
 /* ===== MODAL DETALLE ===== */
+#miniAv{cursor:pointer}
+#profMenu{position:fixed;top:52px;right:10px;z-index:80;background:#1f1f1f;border:1px solid #3a3a3a;border-radius:10px;padding:6px;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.7)}
+#profMenu .pm-t{font-size:12px;color:#999;padding:6px 10px 4px}
+#profMenu button{display:flex;align-items:center;gap:12px;width:100%;background:none;border:0;color:#ddd;font-size:15px;padding:9px 10px;border-radius:7px;text-align:left}
+#profMenu button:active{background:#333}
+#profMenu button.cur{color:#fff;font-weight:700;background:#2b2b2b}
+#profMenu .mini-av{width:32px;height:32px;font-size:17px;flex:none}
 .sheet{position:fixed;inset:0;z-index:70;background:#141414;overflow-y:auto;animation:up .3s ease-out}
 @keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 .sheet .cover{height:240px;background-size:cover;background-position:center;position:relative;background-color:#2a0a10}
@@ -911,6 +918,24 @@ async function instalarApp(){
   document.body.appendChild(d);
 }
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+</script>
+<script>
+/* ===== CAMBIAR DE PERFIL (icono de arriba a la derecha) ===== */
+function cerrarProfMenu(){ const m=document.getElementById('profMenu'); if(m) m.remove(); }
+function abrirProfMenu(){
+  if(document.getElementById('profMenu')){ cerrarProfMenu(); return; }
+  const m=document.createElement('div'); m.id='profMenu';
+  m.innerHTML='<div class="pm-t">Cambiar de perfil</div>'+PERF.map((p,i)=>
+    `<button class="${i===PERF_SEL?'cur':''}" onclick="cambiarPerfil(${i})">${avHTML(p,'mini-av')}<span>${esc(p.nombre)}${i===PERF_SEL?' ✓':''}</span></button>`).join('');
+  document.body.appendChild(m);
+}
+function cambiarPerfil(i){
+  cerrarProfMenu();
+  if(i===PERF_SEL) return;
+  PERF_SEL=i; pintarPerfiles(); pintar();
+}
+document.getElementById('miniAv').addEventListener('click',e=>{ e.stopPropagation(); abrirProfMenu(); });
+document.addEventListener('click',e=>{ const m=document.getElementById('profMenu'); if(m && !m.contains(e.target)) cerrarProfMenu(); });
 </script>
 </body>
 </html>
