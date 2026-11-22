@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#141414">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Maudiflix">
 <title>Maudiflix</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -153,6 +159,10 @@ nav .links b{color:#fff}
 .ytnav button{background:#333c;border-radius:6px;padding:11px 16px;font-size:15px;font-weight:700}
 .links .on{color:#fff;font-weight:700}
 .links span{cursor:pointer}
+.links .inst{color:#fff;font-weight:700;border:1px solid #e50914;border-radius:6px;padding:2px 8px;background:rgba(229,9,20,.18)}
+#instBox{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px}
+#instBox div{background:#1f1f1f;border-radius:12px;padding:22px;max-width:340px;color:#fff;font-size:15px;line-height:1.5}
+#instBox button{margin-top:14px;width:100%;padding:11px;border:0;border-radius:8px;background:#e50914;color:#fff;font-weight:700;font-size:15px}
 #viewPelis{min-height:100vh;padding-bottom:60px}
 #pelPlayer{position:fixed;inset:0;background:#000;z-index:125;display:flex;flex-direction:column;overflow-y:auto}
 #pelPlayer .top{padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:700}
@@ -199,7 +209,7 @@ footer{text-align:center;color:#666;font-size:12px;padding:30px 20px 50px}
   <nav id="nav">
     <div style="display:flex;align-items:center;gap:14px">
       <span class="logo-l">M</span>
-      <div class="links"><span id="navSeries" class="on" onclick="vista('series')">Series</span><span id="navPelis" onclick="vista('pelis')">Películas</span><span id="navLista">Mi lista</span></div>
+      <div class="links"><span id="navSeries" class="on" onclick="vista('series')">Series</span><span id="navPelis" onclick="vista('pelis')">Películas</span><span id="navLista">Mi lista</span><span id="navInstalar" class="inst" onclick="instalarApp()">⬇ Instalar</span></div>
     </div>
     <div class="mini-av" id="miniAv">😍</div>
   </nav>
@@ -877,6 +887,30 @@ document.querySelector("#nav .logo-l").addEventListener("click",()=>{
 });
 iniciarFirebase();
 
+</script>
+<script>
+/* ===== INSTALAR COMO APP ===== */
+let _instEvt=null;
+const _yaInstalada=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+function _ocultarInst(){const b=document.getElementById('navInstalar'); if(b) b.style.display='none';}
+if(_yaInstalada()) _ocultarInst();
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_instEvt=e;});
+window.addEventListener('appinstalled',()=>{_instEvt=null;_ocultarInst();});
+async function instalarApp(){
+  if(_instEvt){
+    _instEvt.prompt();
+    try{ const r=await _instEvt.userChoice; if(r.outcome==='accepted') _ocultarInst(); }catch(e){}
+    _instEvt=null; return;
+  }
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const msg= ios
+    ? 'Toca el botón <b>Compartir</b> (cuadro con flecha) y elige <b>"Agregar a pantalla de inicio"</b>.'
+    : 'Toca los <b>tres puntitos ⋮</b> del navegador y elige <b>"Instalar app"</b> o <b>"Agregar a pantalla de inicio"</b>.';
+  const d=document.createElement('div'); d.id='instBox';
+  d.innerHTML='<div><b style="font-size:17px">Instalar Maudiflix</b><p>'+msg+'</p><button onclick="this.closest(\'#instBox\').remove()">Entendido</button></div>';
+  document.body.appendChild(d);
+}
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
 </body>
 </html>
