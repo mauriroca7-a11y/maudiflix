@@ -249,6 +249,7 @@ footer{text-align:center;color:#666;font-size:12px;padding:30px 20px 50px}
     </div>
   </header>
 
+  <section class="row hidden" id="rowSeries"><h2>Todas las series</h2><div class="scroll" id="seriesRow"></div></section>
   <section class="row" id="rowCont"><h2>Continúa viendo</h2><div class="scroll" id="contRow"></div></section>
   <section class="row"><h2>Capítulos</h2><div class="scroll" id="capsRow"></div></section>
   <section class="row"><h2>Top 10: razones por las que te amo</h2><div class="scroll" id="topRow"></div></section>
@@ -278,6 +279,10 @@ const CONFIG = {
   sinopsis: "Dos personas, una historia real y un amor que sigue escribiéndose cada día. Esta es la serie más especial que verás: la nuestra.",
   mensajeFinal: "Gracias por ser la protagonista de mi vida. Esta temporada termina aquí, pero lo mejor todavía está por venir. Te amo."
 };
+
+const MAINCFG={...CONFIG};
+let SERIE_SEL="main";
+const progKey=()=>SERIE_SEL==="main"?"loveflix_prog":"loveflix_prog_"+SERIE_SEL;
 
 let CAPITULOS = [
   { titulo:"Cómo empezó todo",      desc:"El primer capítulo: dos caminos que se cruzan.", portada:"", media:[] },
@@ -342,7 +347,17 @@ function pintar(){
   $("#heroTitulo").textContent = CONFIG.titulo;
   $("#heroSyn").textContent = CONFIG.sinopsis;
   const pc = CONFIG.portada || CAPITULOS.map(portadaDe).find(Boolean);
-  if(pc){ const h=$("#heroBg"); h.classList.remove("ph"); h.style.backgroundImage=`url('${pc}')`; }
+  { const h=$("#heroBg"); if(pc){ h.classList.remove("ph"); h.style.backgroundImage=`url('${pc}')`; } else { h.classList.add("ph"); h.style.backgroundImage=""; } }
+
+  // Todas las series
+  { const EXT=REM.series||[];
+    $("#rowSeries").classList.toggle("hidden",!(EXT.length||EDIT));
+    const pcMain=MAINCFG.portada||((REM.caps||[]).filter(c=>!c.serie).map(c=>c.portada).find(Boolean))||"";
+    const lista=[{id:"main",titulo:MAINCFG.titulo,portada:pcMain},...EXT];
+    $("#seriesRow").innerHTML=lista.map(x=>{ const sel=x.id===SERIE_SEL, p=x.portada||"";
+      return `<div class="card" onclick="seleccionarSerie('${x.id}')"><div class="thumb${p?"":" ph"}" style="${p?`background-image:url('${p}');`:""}${sel?"outline:2px solid #fff;outline-offset:-2px;":""}"></div><div class="t" style="${sel?"color:#fff;font-weight:700":""}">${esc(x.titulo)}</div></div>`; }).join("")
+      + (EDIT?`<div class="card" onclick="nuevaSerie()"><div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:36px;color:#aaa;background:#2a2a2a">+</div><div class="t" style="color:#aaa">Nueva serie</div></div>`:"");
+  }
 
   // Capítulos
   $("#capsRow").innerHTML = CAPITULOS.map((c,i)=>`
@@ -355,7 +370,7 @@ function pintar(){
     </div>`).join("");
 
   // Top 10 (cada razón con su propia foto)
-  $("#topRow").parentElement.classList.toggle("hidden",!RAZ.length);
+  $("#topRow").parentElement.classList.toggle("hidden",!RAZ.length||SERIE_SEL!=="main");
   $("#topRow").innerHTML = RAZ.slice(0,10).map((r,i)=>`<div class="t10" onclick="verRazon(${i})"><div class="n">${i+1}</div><div class="box" ${r.th?`style="background-image:url('${r.th}')"`:''}><span>${esc(r.txt)}</span></div></div>`).join("");
 
   // Momentos
@@ -367,7 +382,7 @@ function pintar(){
       <div class="thumb" ${bg(m.th||m.src)}></div></div>`).join("");
 
   // Continuar viendo
-  const prog = lsGet("loveflix_prog");
+  const prog = lsGet(progKey());
   if(prog && CAPITULOS[prog.c]){
     const c=CAPITULOS[prog.c];
     $("#rowCont").classList.remove("hidden");
@@ -463,7 +478,7 @@ function abrirSerie(){
     <div class="meta"><span class="match">100% para ti</span><span>${CONFIG.anio}</span><span class="age">+18</span><span>${CAPITULOS.length} capítulos</span></div>
     <button class="btn play" style="width:100%" onclick="reproducirDesdeInicio()">▶ Reproducir</button>
     <p>${esc(CONFIG.sinopsis)}</p>
-    <p style="color:#999;font-size:13px">Protagonistas: ${esc(CONFIG.perfil)} y ${esc(CONFIG.autor)}<br>Género: Romance · Drama real · Familia</p>
+    ${SERIE_SEL==="main"?`<p style="color:#999;font-size:13px">Protagonistas: ${esc(CONFIG.perfil)} y ${esc(CONFIG.autor)}<br>Género: Romance · Drama real · Familia</p>`:""}
     ${listaEps()}</div>`);
 }
 function abrirCap(i){
@@ -510,7 +525,7 @@ function mostrar(){
   }
   const m=c.media[P.i];
   if(m.t==="yt"){
-    lsSet("loveflix_prog",{c:P.c,i:P.i});
+    lsSet(progKey(),{c:P.c,i:P.i});
     $("#bars").children[P.i].classList.add("done");
     document.querySelectorAll(".tapl,.tapr").forEach(e=>e.style.display="none");
     stage.innerHTML=`<div class="ytw"><iframe class="yt" src="${embedSrc(m)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe>${m.txt?`<div class="ytcap">${esc(m.txt)}</div>`:""}</div>`;
@@ -526,7 +541,7 @@ function mostrar(){
     return;
   }
   { const nx=c.media[P.i+1]; if(nx && nx.id && !nx.src && esFoto(nx)) mediaSrc(nx).then(x=>nx.src=x).catch(()=>{}); }
-  lsSet("loveflix_prog",{c:P.c,i:P.i});
+  lsSet(progKey(),{c:P.c,i:P.i});
   const fill=$("#bars").children[P.i].firstElementChild;
   if(m.t==="video"){
     stage.innerHTML=`<video src="${m.src}" playsinline autoplay controls></video>`;
@@ -560,7 +575,7 @@ function siguienteCap(){
     let s=6; const b=el.querySelector(".btn.play");
     const cd=()=>{ if(!document.body.contains(el)) return; b.textContent=`▶ Reproducir (${s})`; if(s--<=0){P.c++;P.i=0;mostrar();return;} P.timer=setTimeout(cd,1000); }; cd();
   } else {
-    lsSet("loveflix_prog",null);
+    lsSet(progKey(),null);
     el.innerHTML=`<h3>FIN DE LA TEMPORADA 1</h3><div class="fin">Continuará…</div><p>${esc(CONFIG.mensajeFinal)}</p>
       <button class="btn play" onclick="cerrarPlayer()">Volver al inicio</button>`;
     lluvia();
@@ -588,7 +603,7 @@ const FIREBASE_CONFIG = {
 };
 const PIN_EDITOR = "2101";
 const FB_OK = !!FIREBASE_CONFIG.apiKey;
-let DB=null, EDIT=(lsGet("mx_ed")===1), REM={meta:undefined,caps:null,perf:null}, editorVista=null;
+let DB=null, EDIT=(lsGet("mx_ed")===1), REM={meta:undefined,caps:null,perf:null,series:[]}, editorVista=null;
 const MC=new Map();
 const nid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
@@ -605,18 +620,24 @@ async function iniciarFirebase(){
     DB.collection("mx").doc("razones").onSnapshot(d=>{ REM.raz=d.exists?d.data():null; aplicarRemoto(); },e=>console.log(e));
     DB.collection("mx").doc("perfiles").onSnapshot(d=>{ REM.perf=d.exists?d.data():null; aplicarRemoto(); },e=>console.log(e));
     DB.collection("mx").doc("pelis").onSnapshot(d=>{ REM.pelis=d.exists?d.data():null; aplicarRemoto(); },e=>console.log(e));
+    DB.collection("mx_series").onSnapshot(q=>{ REM.series=q.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.orden||0)-(b.orden||0)); aplicarRemoto(); },e=>console.log(e));
     DB.collection("mx_caps").onSnapshot(q=>{ REM.caps=q.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.orden||0)-(b.orden||0)); aplicarRemoto(); },e=>console.log(e));
   }catch(e){ console.log("Firebase",e); }
 }
 function aplicarRemoto(){
   const m=REM.meta;
   if(m){
-    ["titulo","sinopsis","perfil","mensajeFinal","autor","portada"].forEach(k=>{ if(m[k]) CONFIG[k]=m[k]; });
+    ["titulo","sinopsis","perfil","mensajeFinal","autor","portada"].forEach(k=>{ if(m[k]) MAINCFG[k]=m[k]; });
     if(!(REM.raz&&Array.isArray(REM.raz.lista)) && Array.isArray(m.razones)&&m.razones.length) RAZ=m.razones.map((t,i)=>({id:"d"+i,txt:t,th:""}));
   }
-  if(REM.caps && !REM.caps.length && REM.meta) CAPITULOS=[];
-  if(REM.caps && REM.caps.length){
-    CAPITULOS=REM.caps.map(c=>({id:c.id,orden:c.orden||0,titulo:c.titulo||"",desc:c.desc||"",portada:c.portada||"",
+  Object.assign(CONFIG,MAINCFG);
+  if(SERIE_SEL!=="main"){
+    const S=(REM.series||[]).find(x=>x.id===SERIE_SEL);
+    if(S){ CONFIG.titulo=S.titulo||"Sin título"; CONFIG.sinopsis=S.sinopsis||""; CONFIG.portada=S.portada||""; CONFIG.mensajeFinal=S.mensajeFinal||""; }
+    else SERIE_SEL="main";
+  }
+  if(REM.caps && (REM.caps.length || REM.meta)){
+    CAPITULOS=REM.caps.filter(c=>(c.serie||"main")===SERIE_SEL).map(c=>({id:c.id,orden:c.orden||0,titulo:c.titulo||"",desc:c.desc||"",portada:c.portada||"",
       media:(c.items||[]).map(it=>({...it,src:MC.get(it.id)||undefined}))}));
   }
   if(REM.raz && Array.isArray(REM.raz.lista)) RAZ=REM.raz.lista;
@@ -689,7 +710,7 @@ function aviso(t){ const e=$("#edmsg"); if(e) e.textContent=t; }
 async function seguro(fn){ try{ await fn(); }catch(e){ console.log(e); aviso("⚠️ "+(e.message||"Error")); } }
 async function guardarCap(ci){
   const c=CAPITULOS[ci];
-  await DB.collection("mx_caps").doc(c.id).set({titulo:c.titulo,desc:c.desc,orden:c.orden||0,portada:c.portada||"",
+  await DB.collection("mx_caps").doc(c.id).set({titulo:c.titulo,desc:c.desc,orden:c.orden||0,portada:c.portada||"",...(SERIE_SEL!=="main"?{serie:SERIE_SEL}:{}),
     items:c.media.map(m=>({id:m.id,t:m.t,txt:m.txt||"",th:m.th||"",...(m.nch?{nch:m.nch}:{}),...(m.mime?{mime:m.mime}:{}),...(m.yt?{yt:m.yt}:{}),...(m.dr?{dr:m.dr}:{})}))});
 }
 async function borrarMedia(m){
@@ -808,12 +829,16 @@ async function itemMover(ci,k,d){ await seguro(async()=>{ const a=CAPITULOS[ci].
 async function itemPortada(ci,k){ await seguro(async()=>{ CAPITULOS[ci].portada=CAPITULOS[ci].media[k].th||""; await guardarCap(ci); aviso("Portada del capítulo cambiada ⭐"); }); }
 async function itemBorrar(ci,k){ if(!confirm("¿Borrar esta foto/video?")) return; await seguro(async()=>{ const [m]=CAPITULOS[ci].media.splice(k,1); await guardarCap(ci); await borrarMedia(m); }); }
 async function guardarTextoCap(ci){ await seguro(async()=>{ const c=CAPITULOS[ci]; c.titulo=$("#c_t").value.trim()||"Sin título"; c.desc=$("#c_d").value.trim(); await guardarCap(ci); aviso("Guardado ✅"); }); }
-async function nuevoCap(){ await seguro(async()=>{ const orden=(CAPITULOS.length?Math.max(...CAPITULOS.map(c=>c.orden||0)):0)+1; await DB.collection("mx_caps").doc().set({titulo:"Nuevo capítulo",desc:"",orden,portada:"",items:[]}); }); }
+async function nuevoCap(){ await seguro(async()=>{ const orden=(CAPITULOS.length?Math.max(...CAPITULOS.map(c=>c.orden||0)):0)+1; await DB.collection("mx_caps").doc().set({titulo:"Nuevo capítulo",desc:"",orden,portada:"",items:[],...(SERIE_SEL!=="main"?{serie:SERIE_SEL}:{})}); }); }
 async function moverCap(i,d){ await seguro(async()=>{ const a=CAPITULOS[i], b=CAPITULOS[i+d]; if(!b) return; const bt=DB.batch(); bt.update(DB.collection("mx_caps").doc(a.id),{orden:b.orden}); bt.update(DB.collection("mx_caps").doc(b.id),{orden:a.orden}); await bt.commit(); }); }
 async function borrarCap(i){ if(!confirm("¿Borrar este capítulo con todas sus fotos y videos?")) return; await seguro(async()=>{ const c=CAPITULOS[i]; for(const m of c.media) await borrarMedia(m); await DB.collection("mx_caps").doc(c.id).delete(); }); }
 async function guardarSerie(){ await seguro(async()=>{
   const f=$("#e_port").files[0]; let portada=CONFIG.portada;
   if(f){ portada=reducir(await cargarImg(f),1000,.8); }
+  if(SERIE_SEL!=="main"){
+    await DB.collection("mx_series").doc(SERIE_SEL).set({titulo:$("#e_titulo").value.trim()||CONFIG.titulo,sinopsis:$("#e_sin").value.trim(),mensajeFinal:$("#e_fin").value.trim(),portada},{merge:true});
+    aviso("Guardado ✅"); return;
+  }
   await DB.collection("mx").doc("serie").set({titulo:$("#e_titulo").value.trim()||CONFIG.titulo,sinopsis:$("#e_sin").value.trim(),
     mensajeFinal:$("#e_fin").value.trim(),autor:CONFIG.autor,portada},{merge:true});
   aviso("Guardado ✅");
@@ -836,7 +861,10 @@ async function editorHome(silent){
   if(!REM.caps.length && !REM.meta){ editorVista="home"; sheetEd(`<h2>✏️ Editor</h2><p>Creando la serie en la nube…</p>`); if(!window._sem){ window._sem=true; await sembrar(); } return; }
   editorVista="home";
   sheetEd(`<h2>✏️ Editor</h2><p class="edmsg" id="edmsg"></p>
-    <h3>La serie</h3>
+    <h3>Series</h3>
+    ${[{id:"main",titulo:MAINCFG.titulo},...(REM.series||[])].map(x=>`<div class="edrow"><b>${x.id===SERIE_SEL?"▶ ":""}${esc(x.titulo)}</b><button onclick="editarSerieSel('${x.id}')">✎</button>${x.id!=="main"?`<button onclick="borrarSerie('${x.id}')">🗑</button>`:""}</div>`).join("")}
+    <button class="btn info" onclick="nuevaSerie()">+ Nueva serie</button>
+    <h3>La serie: ${esc(CONFIG.titulo)}</h3>
     <label>Título</label><input id="e_titulo" value="${esc(CONFIG.titulo)}">
     <label>Sinopsis</label><textarea id="e_sin" rows="4">${esc(CONFIG.sinopsis)}</textarea>
     <label>Mensaje del final</label><textarea id="e_fin" rows="3">${esc(CONFIG.mensajeFinal)}</textarea>
@@ -847,13 +875,36 @@ async function editorHome(silent){
     ${CAPITULOS.map((c,i)=>`<div class="edrow"><b>${i+1}. ${esc(c.titulo)}</b><span>${c.media.length}</span>
       <button onclick="editorCap(${i})">✎</button><button onclick="moverCap(${i},-1)">↑</button><button onclick="moverCap(${i},1)">↓</button><button onclick="borrarCap(${i})">🗑</button></div>`).join("")}
     <button class="btn info" onclick="nuevoCap()">+ Nuevo capítulo</button>
-    <h3>Top 10: razones por las que te amo</h3>
-    <button class="btn info" onclick="editorRazones()">Editar razones y fotos (${RAZ.length}/10)</button>
+    ${SERIE_SEL==="main"?`<h3>Top 10: razones por las que te amo</h3>
+    <button class="btn info" onclick="editorRazones()">Editar razones y fotos (${RAZ.length}/10)</button>`:""}
     <h3>Películas (videos largos)</h3>
     ${PELIS.map((p,i)=>`<div class="edrow"><b>${esc(p.titulo)}</b>
       <button onclick="editorPeli(${i})">✎</button><button onclick="moverPeli(${i},-1)">↑</button><button onclick="moverPeli(${i},1)">↓</button><button onclick="borrarPeli(${i})">🗑</button></div>`).join("")}
     <button class="btn info" onclick="nuevaPeli()">+ Nueva película</button>
     <button class="btn info" style="background:#333" onclick="salirEditor()">Salir del modo editor</button>`);
+}
+function seleccionarSerie(id){ if(id===SERIE_SEL) return; SERIE_SEL=id; aplicarRemoto(); pintar(); scrollTo(0,0); }
+function editarSerieSel(id){ seleccionarSerie(id); editorHome(); }
+async function nuevaSerie(){
+  const t=prompt("Nombre de la nueva serie:"); if(!t||!t.trim()) return;
+  await seguro(async()=>{
+    const orden=(REM.series||[]).reduce((m,x)=>Math.max(m,x.orden||0),0)+1;
+    const ref=DB.collection("mx_series").doc(); const d={titulo:t.trim(),sinopsis:"",mensajeFinal:"",portada:"",orden};
+    await ref.set(d);
+    if(!(REM.series||[]).some(x=>x.id===ref.id)) REM.series=[...(REM.series||[]),{id:ref.id,...d}];
+    SERIE_SEL=ref.id; aplicarRemoto(); pintar(); scrollTo(0,0); editorHome();
+  });
+}
+async function borrarSerie(id){
+  const x=(REM.series||[]).find(y=>y.id===id);
+  if(!x||!confirm('¿Borrar la serie "'+x.titulo+'" con todos sus capítulos, fotos y videos?')) return;
+  await seguro(async()=>{
+    for(const c of (REM.caps||[]).filter(c=>c.serie===id)){ for(const it of (c.items||[])) await borrarMedia(it); await DB.collection("mx_caps").doc(c.id).delete(); }
+    await DB.collection("mx_series").doc(id).delete();
+    if(SERIE_SEL===id) SERIE_SEL="main";
+    REM.series=(REM.series||[]).filter(y=>y.id!==id);
+    aplicarRemoto(); pintar(); editorHome();
+  });
 }
 function editorCap(i,silent){
   const c=CAPITULOS[i]; if(!c||!c.id){ editorHome(); return; }
@@ -878,10 +929,10 @@ function pedirCodigo(){
     <button class="btn play" onclick="probarPin()">Entrar</button></div>`);
 }
 function probarPin(){
-  if($("#pin").value===PIN_EDITOR){ EDIT=true; lsSet("mx_ed",1); cerrarSheet(); actualizarEdicion(); editorHome(); }
+  if($("#pin").value===PIN_EDITOR){ EDIT=true; lsSet("mx_ed",1); cerrarSheet(); pintar(); editorHome(); }
   else { $("#pin").value=""; aviso("Código incorrecto"); }
 }
-function salirEditor(){ EDIT=false; lsSet("mx_ed",0); cerrarSheet(); actualizarEdicion(); }
+function salirEditor(){ EDIT=false; lsSet("mx_ed",0); cerrarSheet(); pintar(); }
 function actualizarEdicion(){
   let b=document.getElementById("fabEd");
   if(b) b.remove();
@@ -987,6 +1038,7 @@ document.addEventListener('click',e=>{ const m=document.getElementById('profMenu
     if(q('#overlay .sheet')){ cerrarSheet(); return true; }
     const vp=q('#viewPelis');
     if(vp && !vp.classList.contains('hidden')){ vista('series'); return true; }
+    if(SERIE_SEL!=="main"){ seleccionarSerie("main"); return true; }
     return false;
   }
   window.addEventListener('popstate',()=>{
